@@ -2,6 +2,9 @@ import express from 'express'
 import cors from 'cors'
 import 'dotenv/config'
 import { ordersRouter } from './routes/orders.js'
+import { kpisRouter } from './routes/kpis.js'
+import { revenueTrendRouter } from './routes/revenueTrend.js'
+import { channelBreakdownRouter } from './routes/channelBreakdown.js'
 
 const app = express()
 const port = Number(process.env.PORT) || 4000
@@ -19,6 +22,9 @@ app.get('/api/health', (_req, res) => {
 })
 
 app.use('/api/orders', ordersRouter)
+app.use('/api/kpis', kpisRouter)
+app.use('/api/revenue-trend', revenueTrendRouter)
+app.use('/api/channel-breakdown', channelBreakdownRouter)
 
 app.listen(port, () => {
   console.log(`API 服务已启动：http://localhost:${port}`)

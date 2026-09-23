@@ -15,3 +15,23 @@ export interface OrdersResponse {
   rows: Order[]
   total: number
 }
+
+export interface Kpi {
+  key: string
+  label: string
+  value: number
+  format: 'currency' | 'number' | 'percent'
+  delta: number
+}
+
+export interface RevenueTrendPoint {
+  month: string
+  revenue: number
+  target: number
+}
+
+export interface ChannelBreakdownItem {
+  channel: string
+  revenue: number
+  share: number
+}

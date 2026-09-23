@@ -1,6 +1,7 @@
 # KPI Dashboard API
 
-Node.js + Express + TypeScript 后端，第一个真实端点：`GET /api/orders`。
+Node.js + Express + TypeScript 后端，已实现四个端点：
+`/api/orders`、`/api/kpis`、`/api/revenue-trend`、`/api/channel-breakdown`。
 
 ## 1. 准备数据库
 
@@ -45,11 +46,33 @@ curl http://localhost:4000/api/health
 # {"status":"ok"}
 
 curl "http://localhost:4000/api/orders?limit=5"
-# {"rows":[...6条订单...],"total":6}
+# {"rows":[...],"total":406}
+
+curl "http://localhost:4000/api/kpis?range=30d"
+# [{"key":"revenue","label":"成交额","value":...,"format":"currency","delta":...}, ...]
+
+curl "http://localhost:4000/api/revenue-trend?range=7m"
+# [{"month":"Apr","revenue":...,"target":200000}, ...] 共 7 条，按月份升序
+
+curl "http://localhost:4000/api/channel-breakdown?range=30d"
+# [{"channel":"Direct","revenue":...,"share":...}, ...] 按 revenue 降序
 ```
 
-如果这两个请求都能拿到正确的 JSON，说明 **Express → PostgreSQL → JSON 响应**
+如果这几个请求都能拿到正确的 JSON，说明 **Express → PostgreSQL → JSON 响应**
 这条链路已经打通了。
+
+## 端点一览
+
+| 端点 | 参数 | 说明 |
+|---|---|---|
+| `GET /api/orders` | `limit`, `offset` | 分页订单列表，`JOIN channels` 直接返回渠道名 |
+| `GET /api/kpis` | `range`（如 `30d`） | 本期 vs 上一等长周期的环比，delta 单位是百分比 |
+| `GET /api/revenue-trend` | `range`（如 `7m`） | 按月聚合营收，`LEFT JOIN monthly_targets`，月份不断档 |
+| `GET /api/channel-breakdown` | `range`（如 `30d`） | 按渠道聚合营收，`share` 是占比（百分比） |
+
+**一个需要你知道的取舍**：`/api/kpis` 里的"退款率"目前是"流失率"的占位替代——
+schema 里还没有 `subscriptions` 表，没法算真正的订阅流失率。等确定要不要做
+订阅制，再决定是加表还是把这个指标从看板上去掉。
 
 ## 目录结构
 
@@ -61,14 +84,21 @@ src/
   routes/
     orders.ts       ← GET /api/orders，分页查询
 db/
-  schema.sql        ← 建表脚本（channels, orders）
-  seed.sql          ← 示例数据，风格对齐前端 mock 数据
+  schema.sql        ← 建表脚本（channels, orders, monthly_targets）
+  seed.sql          ← 示例数据：6 条具名订单 + 400 条随机历史订单 + 月度目标
+src/
+  routes/
+    orders.ts            ← GET /api/orders
+    kpis.ts              ← GET /api/kpis
+    revenueTrend.ts       ← GET /api/revenue-trend
+    channelBreakdown.ts   ← GET /api/channel-breakdown
+  utils/
+    range.ts          ← 解析 "30d" / "7m" 这类 range 参数
 ```
 
 ## 下一步
 
-- 补齐 `/api/kpis`、`/api/revenue-trend`、`/api/channel-breakdown` 三个端点
-  （都是对 `orders` 表做不同维度的聚合查询）
 - 把前端 `vite.config.js` 加上 `server.proxy`，本地开发时把 `/api` 转发到这里的 4000 端口
+- 把前端 `src/data/mockData.js` 里的 `fetchDashboardData()` 换成对这四个端点的真实请求
 - 部署到 Render：新建 Web Service 指向这个仓库，同时用 Render 的 PostgreSQL
   插件创建生产数据库，把连接串填进 Render 的环境变量
