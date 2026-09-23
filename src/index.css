@@ -1,0 +1,23 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html, body {
+  background-color: #F7F5EF;
+  color: #171A21;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+::selection {
+  background-color: #C2872B;
+  color: #F7F5EF;
+}
+
+/* Keyboard focus stays visible; nothing here suppresses it. */
+:focus-visible {
+  outline: 2px solid #1B4B43;
+  outline-offset: 2px;
+}
