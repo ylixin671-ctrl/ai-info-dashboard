@@ -1,57 +1,74 @@
-# Solstice — KPI Dashboard
+# KPI Dashboard API
 
-A React + Vite + Tailwind + Recharts starting point for a business/analytics
-dashboard, wired up to mock data so it runs immediately.
+Node.js + Express + TypeScript 后端，第一个真实端点：`GET /api/orders`。
 
-## Stack
+## 1. 准备数据库
 
-- **React 18 + Vite** — fast dev server, minimal config, deploys as static files anywhere (Vercel, Netlify, Cloudflare Pages, S3, etc.)
-- **Tailwind CSS** — utility-first styling, custom design tokens already set up in `tailwind.config.js`
-- **Recharts** — the revenue trend line chart in `RevenueChart.jsx`; swap for another library if you'd rather, the component boundary is small
+任选一种：
 
-## Run it
+**方式 A：本地 PostgreSQL**
+```bash
+createdb kpi_dashboard
+```
+
+**方式 B：免费云数据库（推荐，省去本地装 PostgreSQL 的麻烦）**
+去 [Neon](https://neon.tech) 或 [Supabase](https://supabase.com) 建一个免费项目，
+拿到连接串（形如 `postgres://user:pass@host/dbname`）。
+
+## 2. 配置环境变量
+
+```bash
+cp .env.example .env
+# 编辑 .env，把 DATABASE_URL 换成你上一步拿到的连接串
+```
+
+## 3. 安装依赖、建表、灌种子数据
 
 ```bash
 npm install
+npm run db:migrate   # 执行 db/schema.sql，建表
+npm run db:seed      # 执行 db/seed.sql，插入几条示例订单
+```
+
+## 4. 启动开发服务器
+
+```bash
 npm run dev
 ```
 
-Then open the local URL Vite prints (usually http://localhost:5173).
+看到 `API 服务已启动：http://localhost:4000` 就说明起来了。
 
-## Build for deployment
+## 5. 验证整条链路
 
 ```bash
-npm run build
+curl http://localhost:4000/api/health
+# {"status":"ok"}
+
+curl "http://localhost:4000/api/orders?limit=5"
+# {"rows":[...6条订单...],"total":6}
 ```
 
-Outputs static files to `dist/` — drag that folder into Netlify, point Vercel
-at the repo, or serve it from any static host.
+如果这两个请求都能拿到正确的 JSON，说明 **Express → PostgreSQL → JSON 响应**
+这条链路已经打通了。
 
-## Project structure
+## 目录结构
 
 ```
 src/
-  data/mockData.js        ← replace fetchDashboardData() with a real API call
-  components/
-    KpiStrip.jsx           ← the four headline numbers
-    RevenueChart.jsx        ← line chart, revenue vs. target
-    ChannelBreakdown.jsx    ← horizontal bar list
-    TransactionsTable.jsx   ← recent orders table
-  App.jsx                  ← layout + data loading
+  index.ts          ← Express 入口，挂载路由、启动服务
+  db.ts             ← PostgreSQL 连接池
+  types.ts          ← 共享类型（Order、OrdersResponse）
+  routes/
+    orders.ts       ← GET /api/orders，分页查询
+db/
+  schema.sql        ← 建表脚本（channels, orders）
+  seed.sql          ← 示例数据，风格对齐前端 mock 数据
 ```
 
-## Wiring in real data
+## 下一步
 
-Everything downstream of `fetchDashboardData()` only depends on the shape of
-the object it returns — `{ kpis, revenueTrend, channelBreakdown, recentTransactions }`.
-To connect a real backend, replace the body of that function in
-`src/data/mockData.js` with a `fetch()` call (or a database/query client call
-if you're rendering server-side), keeping the same return shape. No component
-changes needed if the shape matches.
-
-## Next steps to consider
-
-- Add a date-range picker and refetch on change
-- Add loading/error states per-section instead of one global spinner
-- If KPIs need to update live, consider polling or a websocket instead of the one-shot fetch
-- Move the nav items in `App.jsx` from static labels to actual routes (e.g. React Router) once there's more than one page
+- 补齐 `/api/kpis`、`/api/revenue-trend`、`/api/channel-breakdown` 三个端点
+  （都是对 `orders` 表做不同维度的聚合查询）
+- 把前端 `vite.config.js` 加上 `server.proxy`，本地开发时把 `/api` 转发到这里的 4000 端口
+- 部署到 Render：新建 Web Service 指向这个仓库，同时用 Render 的 PostgreSQL
+  插件创建生产数据库，把连接串填进 Render 的环境变量
